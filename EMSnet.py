@@ -47,10 +47,13 @@ class Local_Representation(nn.Module):
         self.curr_conv = nn.Sequential(
             Double_Conv_Block(1, 16, (1, 5), (0, 0)),
             nn.MaxPool2d(kernel_size=(1, 2), stride=2),
+            nn.Dropout(p=0.5, inplace=False),
             Double_Conv_Block(16, 32, (1, 3), (0, 1)),
             nn.MaxPool2d(kernel_size=(1, 2), stride=2),
+            nn.Dropout(p=0.5, inplace=False),
             Double_Conv_Block(32, 64, (1, 3), (0, 1)),
-            nn.MaxPool2d(kernel_size=(1, 70), stride=2)
+            nn.MaxPool2d(kernel_size=(1, 70), stride=2),
+            nn.Dropout(p=0.5, inplace=False)
         )
 
     def forward(self, input):
@@ -126,7 +129,10 @@ class EMS_Nets(nn.Module):
     """
     def __init__(self, batch_size):
         super(EMS_Nets, self).__init__()
-        self.Linear_local = nn.Linear(64, 64)
+        self.Linear_local = nn.Sequential(
+            nn.Linear(64, 64),
+            nn.Dropout(p=0.5, inplace=False)
+        )
         self.classifier_local = nn.Sigmoid()
         self.local_representation_learning = Local_Representation()
         self.global_representation_learning = Global_Representation()
@@ -182,7 +188,7 @@ class EMS_Nets(nn.Module):
         combined_feature = torch.cat([local_representation, global_representation], dim = 1)
         
         # flatten feature
-        flattened_combined_feature = combined_feature.view(self.batch_size, -1)
+        flattened_combined_feature = combined_feature.view(input.shape[0], -1)
         output = self.feature_combined_dense(flattened_combined_feature)
         return output
     

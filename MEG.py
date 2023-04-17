@@ -9,16 +9,26 @@ def make_dataset(mode):
     assert mode in ['train', 'val', 'test']
     items = []
     if mode == 'train':
-        train_path = os.path.join(root, 'train_small.npy')
-        label_path = os.path.join(root, 'label_small.npy')
-        trainset = np.load(train_path) 
-        labelset = np.load(label_path)
+        train_path = os.path.join(root, 'train_data.npy')
+        label_path = os.path.join(root, 'train_label.npy')
+        trainset = np.load(train_path, allow_pickle=True)
+        labelset = np.load(label_path, allow_pickle=True)
         for x, label in zip(trainset, labelset):
             items.append((x, label))
     elif mode == 'val':
-        print("TODO")
+        val_path = os.path.join(root, 'val_data.npy')
+        label_path = os.path.join(root, 'val_label.npy')
+        valset = np.load(val_path, allow_pickle=True) 
+        labelset = np.load(label_path, allow_pickle=True)
+        for x, label in zip(valset, labelset):
+            items.append((x, label))
     else:
-        print("TODO")
+        test_path = os.path.join(root, 'test_data.npy')
+        label_path = os.path.join(root, 'test_label.npy')
+        testset = np.load(test_path, allow_pickle=True) 
+        labelset = np.load(label_path, allow_pickle=True)
+        for x, label in zip(testset, labelset):
+            items.append((x, label))
     return items
 
 
