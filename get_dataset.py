@@ -6,53 +6,101 @@ from tqdm import tqdm
 import random
 import pdb
 
-def load_from_single_path(file_path):
+def load_from_single_path(file_path, sliding_window = False):
     # load the data, get peak time
     loaded = io.loadmat(file_path)
     peak_time = [loaded[list(loaded.keys())[3]][0][i][1][0][0] for i in range(loaded[list(loaded.keys())[3]].shape[1])] # second index -> # of peaks
     peak_time_ms = [int(t * 1000) for t in peak_time]
     data_MEG = loaded['data_raw']
     data_MEG_filtered = mne.filter.filter_data(data_MEG, 1000, 1, 100)
-    # loop through peak time
     positive_samples = []
     negative_samples = []
-    for p in tqdm(peak_time_ms):
-        # identify region
-        region = None
-        max_ind = 0
-        max_num = 0
-        for i in range(306):
-            if abs(data_MEG_filtered[i][p]) > max_num:
-                max_num = abs(data_MEG_filtered[i][p])
-                max_ind = i
-        region = channel_grouping_inv[channel_name_dict[max_ind]]
-        for i in np.arange(p-220, p-80, 5):
-            curr_data = data_MEG_filtered[channel_grouping_index[region], i:i+300]
-            if curr_data.shape[1] != 300: 
-                    continue
-            if region == "LO" or region == "RO":
-                new_row = np.zeros((3, 300))
-                padded_data = np.vstack((curr_data, new_row))
-                positive_samples.append(padded_data)
-            else: 
-                positive_samples.append(curr_data)
-    while len(negative_samples) < len(positive_samples):
-        random_group = random.choice(list(channel_grouping_index.keys()))
-        random_num = random.randint(0, data_MEG_filtered.shape[1] - 300)
-        for p in peak_time_ms:
-            if p < random_num or p > random_num + 300:
-                curr_data = data_MEG_filtered[channel_grouping_index[random_group], random_num:random_num+300]
+    if sliding_window == False:
+        # loop through peak time
+        for p in tqdm(peak_time_ms):
+            # identify region
+            region = None
+            max_ind = 0
+            max_num = 0
+            for i in range(306):
+                if abs(data_MEG_filtered[i][p]) > max_num:
+                    max_num = abs(data_MEG_filtered[i][p])
+                    max_ind = i
+            region = channel_grouping_inv[channel_name_dict[max_ind]]
+            for i in np.arange(p-220, p-80, 5):
+                curr_data = data_MEG_filtered[channel_grouping_index[region], i:i+300]
                 if curr_data.shape[1] != 300: 
-                    continue
-                if random_group == "LO" or random_group == "RO":
+                        continue
+                if region == "LO" or region == "RO":
                     new_row = np.zeros((3, 300))
                     padded_data = np.vstack((curr_data, new_row))
-                    negative_samples.append(padded_data)
-                else:
-                    negative_samples.append(curr_data)
-    returned_data = positive_samples + negative_samples
-    returned_label = [1] * len(positive_samples) + [0] * len(negative_samples)
-    return (returned_data, returned_label)
+                    positive_samples.append(padded_data)
+                else: 
+                    positive_samples.append(curr_data)
+        while len(negative_samples) < len(positive_samples) * 4:
+            random_group = random.choice(list(channel_grouping_index.keys()))
+            random_num = random.randint(0, data_MEG_filtered.shape[1] - 300)
+            for p in peak_time_ms:
+                if p < random_num or p > random_num + 300:
+                    curr_data = data_MEG_filtered[channel_grouping_index[random_group], random_num:random_num+300]
+                    if curr_data.shape[1] != 300: 
+                        continue
+                    if random_group == "LO" or random_group == "RO":
+                        new_row = np.zeros((3, 300))
+                        padded_data = np.vstack((curr_data, new_row))
+                        negative_samples.append(padded_data)
+                    else:
+                        negative_samples.append(curr_data)
+        returned_data = positive_samples + negative_samples
+        returned_label = [1] * len(positive_samples) + [0] * len(negative_samples)
+        return (returned_data, returned_label)
+    
+    elif sliding_window == True:
+        for i in np.arange(0, len(data_MEG_filtered[0]), 150):
+            is_spike = False
+            curr_peak_time = None
+            for peak in peak_time_ms:
+                if i <= peak and peak <= i + 300:
+                    is_spike = True
+                    curr_peak_time = peak
+                    break
+            if is_spike == False:
+                for key in channel_grouping_index.keys():
+                    value = channel_grouping_index[key]  
+                    # pdb.set_trace()      
+                    curr_data = data_MEG_filtered[value, i:i+300]
+                    if curr_data.shape[1] != 300: 
+                        continue
+                    if key == "LO" or key == "RO":
+                        new_row = np.zeros((3, 300))
+                        padded_data = np.vstack((curr_data, new_row))
+                        negative_samples.append(padded_data)
+                    else:
+                        negative_samples.append(curr_data)
+            elif is_spike == True:
+                region = None
+                max_ind = 0
+                max_num = 0
+                for ind in range(306):
+                    if abs(data_MEG_filtered[ind][curr_peak_time]) > max_num:
+                        max_num = abs(data_MEG_filtered[ind][curr_peak_time])
+                        max_ind = ind
+                region = channel_grouping_inv[channel_name_dict[max_ind]]
+                for key in channel_grouping_index.keys():
+                    value = channel_grouping_index[key]         
+                    curr_data = data_MEG_filtered[value, i:i+300]
+                    if curr_data.shape[1] != 300: 
+                        continue
+                    if key == "LO" or key == "RO":
+                        new_row = np.zeros((3, 300))
+                        curr_data = np.vstack((curr_data, new_row))
+                    if region == key:
+                        positive_samples.append(curr_data)
+                    else:
+                        negative_samples.append(curr_data)
+        returned_data = positive_samples + negative_samples
+        returned_label = [1] * len(positive_samples) + [0] * len(negative_samples)
+        return (returned_data, returned_label)
 
 if __name__ == "__main__":
 
@@ -121,7 +169,7 @@ if __name__ == "__main__":
             training_data += curr_data
             training_label += curr_label
         val_data, val_label = load_from_single_path(data_paths_list[0])
-        test_data, test_label = load_from_single_path(data_paths_list[1])
+        test_data, test_label = load_from_single_path(data_paths_list[1], sliding_window = True)
 
         # Check if the directory exists, and create it if it doesn't
         os.mkdir(directory)

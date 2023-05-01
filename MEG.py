@@ -2,7 +2,6 @@ import os
 import numpy as np
 from torch.utils import data
 
-num_classes = 21
 root = './dataset'
 
 def make_dataset(mode):
