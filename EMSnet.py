@@ -47,13 +47,13 @@ class Local_Representation(nn.Module):
         self.curr_conv = nn.Sequential(
             Double_Conv_Block(1, 16, (1, 5), (0, 0)),
             nn.MaxPool2d(kernel_size=(1, 2), stride=2),
-            nn.Dropout(p=0.5, inplace=False),
+            nn.Dropout2d(p=0.5, inplace=False),
             Double_Conv_Block(16, 32, (1, 3), (0, 1)),
             nn.MaxPool2d(kernel_size=(1, 2), stride=2),
-            nn.Dropout(p=0.5, inplace=False),
+            nn.Dropout2d(p=0.5, inplace=False),
             Double_Conv_Block(32, 64, (1, 3), (0, 1)),
             nn.MaxPool2d(kernel_size=(1, 70), stride=2),
-            nn.Dropout(p=0.5, inplace=False)
+            nn.Dropout2d(p=0.5, inplace=False)
         )
 
     def forward(self, input):

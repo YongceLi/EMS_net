@@ -4,7 +4,7 @@ from torch.utils import data
 
 root = './dataset'
 
-def make_dataset(mode):
+def make_dataset(mode, data_dir):
     assert mode in ['train', 'val', 'test']
     items = []
     if mode == 'train':
